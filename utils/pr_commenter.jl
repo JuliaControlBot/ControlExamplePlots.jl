@@ -1,10 +1,11 @@
 # GLOBALS that should be set
-println("Running comment script!")
-println("PR_ID is $(ENV["PR_ID"])")
+println("Running comment script")
 
 # Set plot globals
 ENV["PLOTS_TEST"] = "true"
 ENV["GKSwstype"] = "100"
+
+println("Defining functions")
 
 # Stolen from https://discourse.julialang.org/t/collecting-all-output-from-shell-commands/15592/6
 """ Read output from terminal command """
@@ -29,21 +30,6 @@ function communicate(cmd::Cmd, input)
     )
 end
 
-# Values
-origin = "origin"
-org = "JuliaControl"
-ID = ENV["PR_ID"]
-
-using Pkg
-# Makes sure we can push to this later
-println("deving ControlExamplePlots")
-Pkg.develop(Pkg.PackageSpec(url="https://github.com/$org/ControlExamplePlots.jl.git"))
-
-println("adding packages")
-Pkg.add("UUIDs")
-Pkg.add("GitHub")
-Pkg.add("ImageMagick") # Has no UUID
-
 """ Checkout ControlSystems PR"""
 function checkout_ControlSystems_PR(org, origin, ID)
     Pkg.develop(Pkg.PackageSpec(url="https://github.com/$org/ControlSystems.jl.git"))
@@ -53,12 +39,6 @@ function checkout_ControlSystems_PR(org, origin, ID)
     run(`git checkout tests-$ID`)
     return
 end
-
-println("running checkout_ControlSystems_PR")
-checkout_ControlSystems_PR(org, origin, ENV["PR_ID"])
-
-println("using ControlExamplePlots")
-using ControlExamplePlots
 
 """ Generate figures for plot tests"""
 function gen_figures()
@@ -75,11 +55,6 @@ function gen_figures()
     return res
 end
 
-println("running gen_figures")
-res = gen_figures()
-
-import UUIDs
-
 function create_ControlExamplePlots_branch(ID)
     dir = joinpath(Pkg.devdir(), "ControlExamplePlots")
     cd(dir)
@@ -91,8 +66,6 @@ function create_ControlExamplePlots_branch(ID)
     return master_sha1, new_branch_name
 end
 
-println("running create_ControlExamplePlots_branch")
-old_commit, new_branch_name = create_ControlExamplePlots_branch(ID)
 
 """ Replace old files with new and push to new branch"""
 function replace_and_push_files(org, origin, ID, new_branch_name)
@@ -113,29 +86,30 @@ function replace_and_push_files(org, origin, ID, new_branch_name)
     return
 end
 
-println("running replace_and_push_files")
-replace_and_push_files(org, origin, ID, new_branch_name)
-
 # Builds a message to post to github
 function get_message(res, org, old_commit, new_branch_name)
+    good = ":heavy_check_mark:"
+    warning = ":warning:"
+    error = ":x:"
+
     str = """This is an automated message.
-    Plot tests were run, see results below.
+    Plots were compared to references, see results below.
     Difference | Reference Image | New Image
     -----------| ----------------| ---------
     """
+
     for r in res
         fig_name = basename(r.refFilename)
-        status = (isdefined(r, :diff) && isa(r.diff, Number)) ? round(r.diff, digits=4) : string(r.status)
-        str *= "$(status) | ![Reference](https://raw.githubusercontent.com/$org/ControlExamplePlots.jl/$old_commit/src/figures/$(fig_name)) | ![New](https://raw.githubusercontent.com/$org/ControlExamplePlots.jl/$(new_branch_name)/src/figures/$(fig_name))\n"
+        # Symbol in front of number
+        diff = (isdefined(r, :diff) && isa(r.diff, Number)) ? r.diff : 1.0
+        symbol = ( diff < 0.15 ? good : (diff < 0.3 ? warning : error))
+        # Number/message we print
+        status = (isdefined(r, :diff) && isa(r.diff, Number)) ? round(r.diff, digits=3) : string(r.status)
+        # Append figure to message
+        str *= "$symbol $status | ![Reference](https://raw.githubusercontent.com/$org/ControlExamplePlots.jl/$old_commit/src/figures/$(fig_name)) | ![New](https://raw.githubusercontent.com/$org/ControlExamplePlots.jl/$(new_branch_name)/src/figures/$(fig_name))\n"
     end
     return str
 end
-
-println("running get_message")
-message = get_message(res, org, old_commit, new_branch_name)
-
-#### Post Comment
-import GitHub
 
 """ Post comment with result to original PR """
 function post_comment(org, message)
@@ -145,7 +119,61 @@ function post_comment(org, message)
     GitHub.create_comment("$org/ControlSystems.jl", ID, :issue; auth = auth, params = Dict("body" => message))
 end
 
-println("running post_comment")
-post_comment(org, message)
+println("Loading constants")
+# Values
+origin = "origin"
+org = "JuliaControl"
+ID = ENV["PR_ID"]
 
-println("Done!")
+try
+    println("Running main script.")
+    println("PR_ID is $(ENV["PR_ID"])")
+
+    using Pkg
+
+    # Makes sure we can push to this later
+    println("deving ControlExamplePlots")
+    Pkg.develop(Pkg.PackageSpec(url="https://github.com/$org/ControlExamplePlots.jl.git"))
+
+    println("adding packages")
+    Pkg.add("UUIDs")
+    Pkg.add("GitHub")
+    Pkg.add("ImageMagick") # Has no UUID
+
+    println("running checkout_ControlSystems_PR")
+    checkout_ControlSystems_PR(org, origin, ENV["PR_ID"])
+
+    println("using ControlExamplePlots")
+    using ControlExamplePlots
+
+    println("running gen_figures")
+    res = gen_figures()
+
+    import UUIDs
+
+    println("running create_ControlExamplePlots_branch")
+    old_commit, new_branch_name = create_ControlExamplePlots_branch(ID)
+
+    println("running replace_and_push_files")
+    replace_and_push_files(org, origin, ID, new_branch_name)
+
+    println("running get_message")
+    message = get_message(res, org, old_commit, new_branch_name)
+
+    #### Post Comment
+    import GitHub
+    println("running post_comment")
+    post_comment(org, message)
+    println("Done!")
+catch
+    println("BUILD FAILED!")
+
+    message = "Something failed when generating plots. See the log at https://github.com/JuliaControl/ControlExamplePlots.jl/actions for more details."
+
+    import GitHub
+    println("running post_comment")
+    post_comment(org, message)
+    println("Build failed, comment added to PR.")
+    # Throw error to log
+    rethrow()
+end
