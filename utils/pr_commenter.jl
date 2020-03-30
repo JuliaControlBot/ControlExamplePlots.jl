@@ -68,7 +68,7 @@ end
 
 
 """ Replace old files with new and push to new branch"""
-function replace_and_push_files(org, origin, ID, new_branch_name)
+function replace_and_push_files(res, org, origin, new_branch_name)
     # Create dir for temporary figures
     dir = joinpath(Pkg.devdir(), "ControlExamplePlots")
     cd(dir)
@@ -102,7 +102,7 @@ function get_message(res, org, old_commit, new_branch_name)
         fig_name = basename(r.refFilename)
         # Symbol in front of number
         diff = (isdefined(r, :diff) && isa(r.diff, Number)) ? r.diff : 1.0
-        symbol = ( diff < 0.15 ? good : (diff < 0.3 ? warning : error))
+        symbol = ( diff < 0.015 ? good : (diff < 0.03 ? warning : error))
         # Number/message we print
         status = (isdefined(r, :diff) && isa(r.diff, Number)) ? round(r.diff, digits=3) : string(r.status)
         # Append figure to message
@@ -112,7 +112,7 @@ function get_message(res, org, old_commit, new_branch_name)
 end
 
 """ Post comment with result to original PR """
-function post_comment(org, message)
+function post_comment(org, ID, message)
     token = ENV["ACCESS_TOKEN_BOT"]
     auth = GitHub.authenticate(token)
     #Push the comment
@@ -155,7 +155,7 @@ try
     old_commit, new_branch_name = create_ControlExamplePlots_branch(ID)
 
     println("running replace_and_push_files")
-    replace_and_push_files(org, origin, ID, new_branch_name)
+    replace_and_push_files(res, org, origin, new_branch_name)
 
     println("running get_message")
     message = get_message(res, org, old_commit, new_branch_name)
@@ -163,7 +163,7 @@ try
     #### Post Comment
     import GitHub
     println("running post_comment")
-    post_comment(org, message)
+    post_comment(org, ID, message)
     println("Done!")
 catch
     println("BUILD FAILED!")
@@ -172,7 +172,7 @@ catch
 
     import GitHub
     println("running post_comment")
-    post_comment(org, message)
+    post_comment(org, ID, message)
     println("Build failed, comment added to PR.")
     # Throw error to log
     rethrow()
