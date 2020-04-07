@@ -52,7 +52,10 @@ function gen_figures()
     # Set to a factor 2*2 of common errors
     eps = 2*[0.15, 0.015, 0.1, 0.01, 0.01, 0.02, 0.01, 0.15, 0.15, 0.01, 0.01]
     res = genplots(funcs, refs, eps=eps, popup=false)
-    return res
+
+    ndiff = count(r -> r.status != EXACT_MATCH, res)
+
+    return res, ndiff
 end
 
 function create_ControlExamplePlots_branch(ID)
@@ -68,7 +71,7 @@ end
 
 
 """ Replace old files with new and push to new branch"""
-function replace_and_push_files(res, org, origin, new_branch_name)
+function replace_and_push_files(res, new_org, origin, new_branch_name)
     # Create dir for temporary figures
     dir = joinpath(Pkg.devdir(), "ControlExamplePlots")
     cd(dir)
@@ -81,32 +84,44 @@ function replace_and_push_files(res, org, origin, new_branch_name)
     run(`git config --global user.name "JuliaControl Bot"`)
     run(`git add src/figures/*`)
     run(`git commit -m "automated plots test"`)
-    run(`git remote set-url $origin https://JuliaControlBot:$(ENV["ACCESS_TOKEN_BOT"])@github.com/$org/ControlExamplePlots.jl.git`)
-    run(`git push -u $origin $new_branch_name`)
+    run(`git remote add bot https://JuliaControlBot:$(ENV["ACCESS_TOKEN_BOT"])@github.com/$(new_org)/ControlExamplePlots.jl.git`)
+    run(`git push -u bot $new_branch_name`)
     return
 end
 
 # Builds a message to post to github
-function get_message(res, org, old_commit, new_branch_name)
+function get_message(res, org, new_org, old_commit, new_branch_name)
     good = ":heavy_check_mark:"
     warning = ":warning:"
     error = ":x:"
 
-    str = """This is an automated message.
-    Plots were compared to references, see results below.
-    Difference | Reference Image | New Image
-    -----------| ----------------| ---------
-    """
-
+    images_str = ""
+    ndiff = 0
     for r in res
-        fig_name = basename(r.refFilename)
-        # Symbol in front of number
-        diff = (isdefined(r, :diff) && isa(r.diff, Number)) ? r.diff : 1.0
-        symbol = ( diff < 0.015 ? good : (diff < 0.03 ? warning : error))
-        # Number/message we print
-        status = (isdefined(r, :diff) && isa(r.diff, Number)) ? round(r.diff, digits=3) : string(r.status)
-        # Append figure to message
-        str *= "$symbol $status | ![Reference](https://raw.githubusercontent.com/$org/ControlExamplePlots.jl/$old_commit/src/figures/$(fig_name)) | ![New](https://raw.githubusercontent.com/$org/ControlExamplePlots.jl/$(new_branch_name)/src/figures/$(fig_name))\n"
+        if r.status != EXACT_MATCH
+            ndiff += 1
+            diff = (isdefined(r, :diff) && isa(r.diff, Number)) ? r.diff : 1.0
+            # Symbol in front of number
+            symbol = ( diff < 0.015 ? good : (diff < 0.03 ? warning : error))
+            # Number/message we print
+            status = (isdefined(r, :diff) && isa(r.diff, Number)) ? round(r.diff, digits=3) : string(r.status)
+            # Name of file
+            fig_name = basename(r.refFilename)
+            # Append figure to message
+            images_str *= "$symbol $status | ![Reference](https://raw.githubusercontent.com/$org/ControlExamplePlots.jl/$old_commit/src/figures/$(fig_name)) | ![New](https://raw.githubusercontent.com/$(new_org)/ControlExamplePlots.jl/$(new_branch_name)/src/figures/$(fig_name))\n"
+        end
+    end
+
+    str = if ndiff > 0
+        """This is an automated message.
+        Plots were compared to references. $(ndiff)/$(length(res)) images have changed, see differences below:
+        Difference | Reference Image | New Image
+        -----------| ----------------| ---------
+        """*images_str
+    else
+        """This is an automated message.
+        Plots were compared to references. No changes were detected.
+        """
     end
     return str
 end
@@ -123,6 +138,7 @@ println("Loading constants")
 # Values
 origin = "origin"
 org = "JuliaControl"
+new_org = "JuliaControlBot"
 ID = ENV["PR_ID"]
 
 try
@@ -147,18 +163,23 @@ try
     using ControlExamplePlots
 
     println("running gen_figures")
-    res = gen_figures()
+    res, ndiff = gen_figures()
 
+    println("$ndiff images have changes")
     import UUIDs
 
-    println("running create_ControlExamplePlots_branch")
-    old_commit, new_branch_name = create_ControlExamplePlots_branch(ID)
+    if ndiff > 0
+        println("running create_ControlExamplePlots_branch")
+        old_commit, new_branch_name = create_ControlExamplePlots_branch(ID)
 
-    println("running replace_and_push_files")
-    replace_and_push_files(res, org, origin, new_branch_name)
+        println("running replace_and_push_files")
+        replace_and_push_files(res, new_org, origin, new_branch_name)
+    else
+        println("No changes will be pushed")
+    end
 
     println("running get_message")
-    message = get_message(res, org, old_commit, new_branch_name)
+    message = get_message(res, org, new_org, old_commit, new_branch_name)
 
     #### Post Comment
     import GitHub
