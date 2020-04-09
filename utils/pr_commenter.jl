@@ -167,11 +167,12 @@ try
 
     println("$ndiff images have changes")
     import UUIDs
-
+    
+    
+    println("running create_ControlExamplePlots_branch")
+    old_commit, new_branch_name = create_ControlExamplePlots_branch(ID)
+    
     if ndiff > 0
-        println("running create_ControlExamplePlots_branch")
-        old_commit, new_branch_name = create_ControlExamplePlots_branch(ID)
-
         println("running replace_and_push_files")
         replace_and_push_files(res, new_org, origin, new_branch_name)
     else
