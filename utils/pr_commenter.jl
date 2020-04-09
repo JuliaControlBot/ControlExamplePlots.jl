@@ -53,7 +53,7 @@ function gen_figures()
     eps = 2*[0.15, 0.015, 0.1, 0.01, 0.01, 0.02, 0.01, 0.15, 0.15, 0.01, 0.01]
     res = genplots(funcs, refs, eps=eps, popup=false)
 
-    ndiff = count(r -> r.status != EXACT_MATCH, res)
+    ndiff = count(r -> r.status != ControlExamplePlots.EXACT_MATCH, res)
 
     return res, ndiff
 end
@@ -98,7 +98,7 @@ function get_message(res, org, new_org, old_commit, new_branch_name)
     images_str = ""
     ndiff = 0
     for r in res
-        if r.status != EXACT_MATCH
+        if r.status != ControlExamplePlots.EXACT_MATCH
             ndiff += 1
             diff = (isdefined(r, :diff) && isa(r.diff, Number)) ? r.diff : 1.0
             # Symbol in front of number
