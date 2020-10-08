@@ -82,7 +82,7 @@ function replace_and_push_files(res, new_org, origin, new_branch_name)
     # Add figures
     run(`git config --global user.email "name@example.com"`)
     run(`git config --global user.name "JuliaControl Bot"`)
-    run(`git add src/figures/*`)
+    run(`git add src/figures/"*"`) # Escaping special char *
     run(`git commit -m "automated plots test"`)
     run(`git remote add bot https://JuliaControlBot:$(ENV["ACCESS_TOKEN_BOT"])@github.com/$(new_org)/ControlExamplePlots.jl.git`)
     run(`git push -u bot $new_branch_name`)
