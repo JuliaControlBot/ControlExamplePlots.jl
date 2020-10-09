@@ -11,10 +11,15 @@ jobs:
       - name: Event Information
         run: |
           echo "Event '${{ github.event.action }}' received from '${{ github.event.client_payload.repository }}'"
-      - name: Do stuff
+      - name: PR ID
+        if: github.event.action == 'prupdate' && github.event.sender.login == 'JuliaControlBot'
+        run: |
+          echo "PR id: '${{ github.event.client_payload.pr_number }}'
+      - name: Plots and comment
         env:
           ACCESS_TOKEN_BOT: ${{ secrets.ACCESS_TOKEN_BOT }}
           PR_ID: ${{ github.event.client_payload.pr_number }}
+          RUN_ID: ${{ github.run_id }}
         if: github.event.action == 'prupdate' && github.event.sender.login == 'JuliaControlBot'
         run: |
           echo "Got PR Update"

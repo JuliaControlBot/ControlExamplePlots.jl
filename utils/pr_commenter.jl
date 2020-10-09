@@ -114,7 +114,8 @@ function get_message(res, org, new_org, old_commit, new_branch_name)
 
     str = if ndiff > 0
         """This is an automated message.
-        Plots were compared to references. $(ndiff)/$(length(res)) images have changed, see differences below:
+        Plots were compared to references. $(ndiff)/$(length(res)) images have changed, see differences below.
+        After pulling this PR, please update the reference images by creating a PR to ControlExamplePlots.jl [here](https://github.com/JuliaControlBot/ControlExamplePlots.jl/pull/new/($new_branch_name)).
         Difference | Reference Image | New Image
         -----------| ----------------| ---------
         """*images_str
@@ -140,6 +141,7 @@ origin = "origin"
 org = "JuliaControl"
 new_org = "JuliaControlBot"
 ID = ENV["PR_ID"]
+RUN_ID = ENV["RUN_ID"]
 
 try
     println("Running main script.")
@@ -190,7 +192,7 @@ try
 catch
     println("BUILD FAILED!")
 
-    message = "Something failed when generating plots. See the log at https://github.com/JuliaControl/ControlExamplePlots.jl/actions for more details."
+    message = "Something failed when generating plots. See the log at https://github.com/JuliaControl/ControlExamplePlots.jl/runs/$(RUN_ID)?check_suite_focus=true for more details."
 
     import GitHub
     println("running post_comment")
