@@ -115,7 +115,7 @@ function get_message(res, org, new_org, old_commit, new_branch_name)
     str = if ndiff > 0
         """This is an automated message.
         Plots were compared to references. $(ndiff)/$(length(res)) images have changed, see differences below.
-        After pulling this PR, please update the reference images by creating a PR to ControlExamplePlots.jl [here](https://github.com/JuliaControlBot/ControlExamplePlots.jl/pull/new/($new_branch_name)).
+        After pulling this PR, please update the reference images by creating a PR to ControlExamplePlots.jl [here](https://github.com/JuliaControlBot/ControlExamplePlots.jl/pull/new/$(new_branch_name)).
         Difference | Reference Image | New Image
         -----------| ----------------| ---------
         """*images_str
