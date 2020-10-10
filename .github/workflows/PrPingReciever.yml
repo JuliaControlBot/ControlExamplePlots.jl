@@ -14,7 +14,7 @@ jobs:
       - name: PR ID
         if: github.event.action == 'prupdate' && github.event.sender.login == 'JuliaControlBot'
         run: |
-          echo "PR id: '${{ github.event.client_payload.pr_number }}'
+          echo "PR id: '${{ github.event.client_payload.pr_number }}'"
       - name: Plots and comment
         env:
           ACCESS_TOKEN_BOT: ${{ secrets.ACCESS_TOKEN_BOT }}
