@@ -192,7 +192,7 @@ try
 catch
     println("BUILD FAILED!")
 
-    message = "Something failed when generating plots. See the log at https://github.com/JuliaControl/ControlExamplePlots.jl/runs/$(RUN_ID)?check_suite_focus=true for more details."
+    message = "Something failed when generating plots. See the log at https://github.com/JuliaControl/ControlExamplePlots.jl/actions/runs/$(RUN_ID)?check_suite_focus=true for more details."
 
     import GitHub
     println("running post_comment")
